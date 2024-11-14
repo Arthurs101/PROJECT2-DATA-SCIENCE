@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import datetime
 import os
+from InteractiveModels import predict  # Import the prediction function
+import torch
+import tempfile
 
 # Configuración de la sesión para la navegación
 if "page" not in st.session_state:
@@ -45,7 +48,7 @@ st.markdown("""
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 60px;
+            height: 80px;
             background-color: #f0f0f0;
             display: flex;
             justify-content: space-around;
@@ -116,20 +119,35 @@ def registrar_paciente():
 def diagnostico_lumbar():
     st.markdown("<div class='centered-title'>Registro diagnóstico lumbar</div>", unsafe_allow_html=True)
     nombre_paciente = st.text_input("Nombre del paciente:", "", placeholder="Nombre del paciente")
-    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["jpg", "png"])
+    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["jpg", "png", "jpeg"])
+
+    # Model selection
+    model_type = st.selectbox("Seleccionar modelo", ["alexnet", "resnet"])
+    view_type = st.selectbox("Seleccionar vista", ["saggital1", "axial", "saggital2"])
 
     if nombre_paciente and imagen_diagnostico:
         ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
         if os.path.exists(ruta_paciente):
+            # Guardar imagen en el servidor
             fecha_actual = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
             ruta_imagen = f"{ruta_paciente}/{fecha_actual}.jpg"
             with open(ruta_imagen, "wb") as f:
                 f.write(imagen_diagnostico.getbuffer())
             st.success(f"Imagen guardada en {ruta_imagen}")
             st.session_state["ultima_imagen"] = ruta_imagen
+
+            # Realizar la predicción
+            st.write("Realizando predicción con el modelo seleccionado...")
+            # Predicción del modelo
+            output = predict(ruta_imagen, model_type, view_type)
+
+            # Mostrar los resultados
+            st.write("Resultados de la predicción:")
+            st.write(f"Predicción del modelo para {view_type}: {output}")
+            
         else:
             st.error("Ha ingresado incorrectamente el nombre del paciente. Por favor, revise el nombre o regístrelo primero.")
-
+    
     if st.button("Enviar a diagnóstico"):
         cambiar_pagina("resultados")
 

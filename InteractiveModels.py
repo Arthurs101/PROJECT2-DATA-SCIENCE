@@ -9,9 +9,9 @@ import torchvision.models as models
 from torchvision import transforms
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 from PIL import Image
 import pydicom
+from PIL import Image
 
 AlexNetModel = {
     "saggital1": "./models/alexnet_saggitalt1_model.pth",
@@ -58,6 +58,37 @@ transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),
     transforms.ToTensor(),
 ])
+
+def load_model(model_type, view_type):
+    model_path = None
+    if model_type == "alexnet":
+        model_path = AlexNetModel[view_type]
+        model = CustomAlexNet()
+    elif model_type == "resnet":
+        model_path = ResNetModel[view_type]
+        model = CustomResNet()
+
+    model.load_state_dict(torch.load(model_path))
+    model.eval()  # Set the model to evaluation mode
+    return model
+
+def preprocess_image(image_path):
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+    image = Image.open(image_path).convert('RGB')  # Ensure the image is RGB
+    image_tensor = preprocess(image).unsqueeze(0)  # Add batch dimension
+    return image_tensor
+
+def predict(image_path, model_type, view_type):
+    model = load_model(model_type, view_type)
+    image_tensor = preprocess_image(image_path)
+    with torch.no_grad():  # Disable gradient calculation for inference
+        output = model(image_tensor)
+    return output
 
 def load_dicom_image(dicom_path):
     """Load and preprocess a DICOM image."""
