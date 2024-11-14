@@ -83,7 +83,9 @@ def preprocess_image(image_path):
     image_tensor = preprocess(image).unsqueeze(0)  # Add batch dimension
     return image_tensor
 
-def predict(image_path, model_type, view_type):
+
+# Aqui esta la funcion que no encuentra
+def predict_diagnosis(image_path, model_type, view_type):
     model = load_model(model_type, view_type)
     image_tensor = preprocess_image(image_path)
     with torch.no_grad():  # Disable gradient calculation for inference

@@ -1,9 +1,15 @@
+import os
+import torch
+import pydicom
+import tempfile
+import numpy as np
+from PIL import Image
 import streamlit as st
 from datetime import datetime
-import os
-from InteractiveModels import predict  # Import the prediction function
-import torch
-import tempfile
+from InteractiveModels import predict_image
+from InteractiveModels import predict_diagnosis # No entiendo porque no la encuentra 
+from pydicom.pixel_data_handlers.util import apply_modality_lut
+from InteractiveModels import process_image
 
 # Configuración de la sesión para la navegación
 if "page" not in st.session_state:
@@ -100,6 +106,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# convertir DICOM a imagen
+def dicom_to_image(path):
+    ds = pydicom.dcmread(path)
+    image = apply_modality_lut(ds.pixel_array, ds)
+    image = (image - image.min()) / (image.max() - image.min()) * 255.0
+    image = image.astype(np.uint8)
+    return Image.fromarray(image)
+
+# Función de predicción 
+def predict(image_path, model_type, view_type):
+    # Aquí iría la lógica del modelo de predicción
+    return f"Predicción simulada para {model_type} en vista {view_type}"
+
 # Página para registrar al paciente
 def registrar_paciente():
     st.markdown("<div class='centered-title'>Agregar paciente</div>", unsafe_allow_html=True)
@@ -118,45 +137,70 @@ def registrar_paciente():
 # Página para subir imagen de diagnóstico
 def diagnostico_lumbar():
     st.markdown("<div class='centered-title'>Registro diagnóstico lumbar</div>", unsafe_allow_html=True)
+    
     nombre_paciente = st.text_input("Nombre del paciente:", "", placeholder="Nombre del paciente")
-    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["jpg", "png", "jpeg"])
+    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["dcm"])
 
-    # Model selection
     model_type = st.selectbox("Seleccionar modelo", ["alexnet", "resnet"])
     view_type = st.selectbox("Seleccionar vista", ["saggital1", "axial", "saggital2"])
 
     if nombre_paciente and imagen_diagnostico:
+        # Crear carpeta para el paciente si no existe
         ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
-        if os.path.exists(ruta_paciente):
-            # Guardar imagen en el servidor
-            fecha_actual = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
-            ruta_imagen = f"{ruta_paciente}/{fecha_actual}.jpg"
-            with open(ruta_imagen, "wb") as f:
-                f.write(imagen_diagnostico.getbuffer())
-            st.success(f"Imagen guardada en {ruta_imagen}")
-            st.session_state["ultima_imagen"] = ruta_imagen
+        os.makedirs(ruta_paciente, exist_ok=True)
 
-            # Realizar la predicción
-            st.write("Realizando predicción con el modelo seleccionado...")
-            # Predicción del modelo
-            output = predict(ruta_imagen, model_type, view_type)
+        # Guardar imagen con fecha y hora actual
+        fecha_actual = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
+        ruta_imagen = f"{ruta_paciente}/{fecha_actual}.dcm"
+        with open(ruta_imagen, "wb") as f:
+            f.write(imagen_diagnostico.getbuffer())
+        st.success(f"Imagen guardada en {ruta_imagen}")
+        
+        # Guardar la ruta de la última imagen en session_state
+        st.session_state["ultima_imagen"] = ruta_imagen
 
-            # Mostrar los resultados
-            st.write("Resultados de la predicción:")
-            st.write(f"Predicción del modelo para {view_type}: {output}")
-            
-        else:
-            st.error("Ha ingresado incorrectamente el nombre del paciente. Por favor, revise el nombre o regístrelo primero.")
-    
+        # Mostrar la imagen DICOM en tamaño reducido
+        image = dicom_to_image(ruta_imagen)
+        st.image(image, caption="Imagen DICOM", width=300)
+
+        # Realizar la predicción
+        st.write("Realizando predicción...")
+        output = predict_image(ruta_imagen, model_type, view_type)
+
+        # Guardar el resultado de la predicción en session_state
+        st.session_state["output"] = output
+        st.write("Resultados de la predicción:")
+        st.write(f"Predicción del modelo para {view_type}: {output}")
+
+    # Botón para ir a la página de resultados
     if st.button("Enviar a diagnóstico"):
         cambiar_pagina("resultados")
 
 # Página de Resultados
 def pagina_resultados():
     st.markdown("<div class='centered-title'>Resultados del Diagnóstico</div>", unsafe_allow_html=True)
+    
     if "ultima_imagen" in st.session_state:
         ultima_imagen = st.session_state["ultima_imagen"]
-        st.image(ultima_imagen, caption="Último diagnóstico cargado", use_column_width=True)
+        
+        # Procesar la imagen y obtener predicciones y mapa de saliencia
+        # Especifica aquí el modelo CNN y tipo, como ejemplo: "alex" y "saggital1"
+        predictions, overlayed_image = process_image("alex", "saggital1", ultima_imagen)
+
+        # Mostrar la última imagen cargada con el mapa de saliencia
+        st.image(overlayed_image, caption="Último diagnóstico cargado con Saliency Map", width=300)
+
+        # Mostrar el resultado de la predicción por cada nivel
+        if predictions:
+            st.markdown("### Diagnóstico de Severidad por Nivel")
+            
+            # Crear una tabla para mostrar la severidad y confianza para cada nivel
+            for level, result in predictions.items():
+                severity = result["Class"]
+                confidence = result["Confidence"]
+                st.write(f"{level}: **{severity}** (Confianza: {confidence:.2f})")
+        else:
+            st.write("No hay resultados de predicción disponibles.")
     else:
         st.warning("No hay una imagen cargada recientemente. Por favor, suba una imagen en la página de diagnóstico.")
 
@@ -222,19 +266,19 @@ with col3:
         cambiar_pagina("pacientes")
     st.markdown("<button><img src='https://img.icons8.com/ios-filled/50/000000/doctor-male.png' alt='Pacientes' title='Pacientes'></button>", unsafe_allow_html=True)
 
-st.markdown("""
-<div class="navbar">
-    <a href="?page=registrar_paciente" target="_self">
-        <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Registro" title="Registro de Paciente">
-    </a>
-    <a href="?page=diagnostico_lumbar" target="_self">
-        <img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" alt="Diagnóstico" title="Diagnóstico Lumbar">
-    </a>
-    <a href="?page=pacientes" >
-        <img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" alt="Pacientes" title="Pacientes">
-    </a>
-</div>
-""", unsafe_allow_html=True)
+# st.markdown("""
+# <div class="navbar">
+#     <a href="?page=registrar_paciente" target="_self">
+#         <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Registro" title="Registro de Paciente">
+#     </a>
+#     <a href="?page=diagnostico_lumbar" target="_self">
+#         <img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" alt="Diagnóstico" title="Diagnóstico Lumbar">
+#     </a>
+#     <a href="?page=pacientes" >
+#         <img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" alt="Pacientes" title="Pacientes">
+#     </a>
+# </div>
+# """, unsafe_allow_html=True)
 
 # Manejo de parámetros en URL para navegación
 query_params = st.query_params
