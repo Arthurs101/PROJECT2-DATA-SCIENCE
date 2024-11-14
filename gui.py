@@ -12,7 +12,7 @@ def cambiar_pagina(pagina):
 
 # CSS para estilos personalizados
 st.markdown("""
-    <style>
+    <style>            
         .input-field {
             background-color: #a3e4f9;
             border-radius: 20px;
@@ -50,14 +50,27 @@ st.markdown("""
             display: flex;
             justify-content: space-around;
             align-items: center;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.15);
+            z-index: 9999;
+        }
+        .navbar a {
+            text-decoration: none;
+            color: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            height: 70px;
+            transition: background-color 0.3s ease;
+        }
+        .navbar a:hover {
+            background-color: #e0e0e0;
+            border-radius: 50%;
         }
         .navbar img {
-            width: 36px;
-            height: 36px;
-            cursor: pointer;
+            width: 50px;
+            height: 50px;
         }
-        
-            
         .centered-title {
             text-align: center;
             font-size: 24px;
@@ -68,11 +81,6 @@ st.markdown("""
             display: block;
             margin: 0 auto 20px auto;
             width: 150px;
-        }
-        .centered-title {
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
         }
         .card {
             box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
@@ -113,7 +121,7 @@ def diagnostico_lumbar():
     if nombre_paciente and imagen_diagnostico:
         ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
         if os.path.exists(ruta_paciente):
-            fecha_actual = datetime.now().strftime("%d-%m-%y %H:%M:%S")
+            fecha_actual = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
             ruta_imagen = f"{ruta_paciente}/{fecha_actual}.jpg"
             with open(ruta_imagen, "wb") as f:
                 f.write(imagen_diagnostico.getbuffer())
@@ -122,16 +130,8 @@ def diagnostico_lumbar():
         else:
             st.error("Ha ingresado incorrectamente el nombre del paciente. Por favor, revise el nombre o regístrelo primero.")
 
-    # Botón para navegar a ingreso de paciente
-    if st.button("Ingresar un paciente"):
-        cambiar_pagina("registrar_paciente")
-    # Botón para navegar a la página de resultados
     if st.button("Enviar a diagnóstico"):
         cambiar_pagina("resultados")
-
-    if st.button("ver pacientes"):
-        cambiar_pagina("pacientes")
-        
 
 # Página de Resultados
 def pagina_resultados():
@@ -142,6 +142,7 @@ def pagina_resultados():
     else:
         st.warning("No hay una imagen cargada recientemente. Por favor, suba una imagen en la página de diagnóstico.")
 
+# Página de Pacientes Registrados
 def pagina_pacientes():
     st.markdown("<div class='centered-title'>Pacientes Registrados</div>", unsafe_allow_html=True)
     pacientes = os.listdir("./Images")
@@ -153,7 +154,7 @@ def pagina_pacientes():
                 <a href="?page=historia_paciente&paciente={paciente}" target="_self">
                     <img src="https://img.icons8.com/ios-filled/50/000000/user.png" alt="Imagen de perfil">
                     <div class="container">
-                        <h4><b>{paciente}</b></h4>
+                        <h4><b>{paciente.replace('_', ' ')}</b></h4>
                     </div>
                 </a>
             </div>
@@ -161,20 +162,14 @@ def pagina_pacientes():
     else:
         st.warning("No hay pacientes registrados.")
 
+# Página de Historia del Paciente
 def historia_paciente(paciente):
-    st.markdown(f"<div class='centered-title'>Historia de {paciente}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='centered-title'>Historia de {paciente.replace('_', ' ')}</div>", unsafe_allow_html=True)
     imagenes = os.listdir(f"./Images/{paciente}")
     
     if imagenes:
         for imagen in imagenes:
-            st.markdown(f"""
-            <div class="image-card">
-                <img src="./Images/{paciente}/{imagen}" alt="{imagen}" style="width:50px;height:50px;">
-                <div class="container">
-                    <p>{imagen}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.image(f"./Images/{paciente}/{imagen}", caption=imagen, use_column_width=True)
     else:
         st.warning("No hay imágenes para este paciente.")
 
@@ -187,26 +182,53 @@ elif st.session_state.page == "resultados":
     pagina_resultados()
 elif st.session_state.page == "pacientes":
     pagina_pacientes()
+elif st.session_state.page == "historia_paciente" and "paciente" in st.session_state:
+    historia_paciente(st.session_state["paciente"])
 
 # Navbar
+# Columnas invisibles en la barra de navegación
+col1, col2, col3 = st.columns(3)
+# Botones con imágenes y enlaces a las funciones
+with col1:
+    if st.button("", key="registro"):
+        cambiar_pagina("registrar_paciente")
+    st.markdown("<button><img src='https://img.icons8.com/ios-filled/50/000000/paper.png' alt='Registro' title='Registro de Paciente'></button>", unsafe_allow_html=True)
+
+with col2:
+    if st.button("", key="diagnostico"):
+        cambiar_pagina("diagnostico_lumbar")
+    st.markdown("<button><img src='https://img.icons8.com/ios-filled/50/000000/treatment-plan.png' alt='Diagnóstico' title='Diagnóstico Lumbar'></button>", unsafe_allow_html=True)
+
+with col3:
+    if st.button("", key="pacientes"):
+        cambiar_pagina("pacientes")
+    st.markdown("<button><img src='https://img.icons8.com/ios-filled/50/000000/doctor-male.png' alt='Pacientes' title='Pacientes'></button>", unsafe_allow_html=True)
+
 st.markdown("""
-    <div class="navbar">
-        <a href="?page=registrar_paciente" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/paper.png" title="Registro de Paciente"></a>
-        <a href="?page=diagnostico_lumbar" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" title="Diagnóstico Lumbar"></a>
-        <a href="?page=pacientes" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" title="Pacientes"></a>
-    </div>
+<div class="navbar">
+    <a href="?page=registrar_paciente" target="_self">
+        <img src="https://img.icons8.com/ios-filled/50/000000/paper.png" alt="Registro" title="Registro de Paciente">
+    </a>
+    <a href="?page=diagnostico_lumbar" target="_self">
+        <img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" alt="Diagnóstico" title="Diagnóstico Lumbar">
+    </a>
+    <a href="?page=pacientes" >
+        <img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" alt="Pacientes" title="Pacientes">
+    </a>
+</div>
 """, unsafe_allow_html=True)
 
 # Manejo de parámetros en URL para navegación
 query_params = st.query_params
-if query_params.get("page") == ["registrar_paciente"]:
-    cambiar_pagina("registrar_paciente")
-elif query_params.get("page") == ["diagnostico_lumbar"]:
-    cambiar_pagina("diagnostico_lumbar")
-elif query_params.get("page") == ["resultados"]:
-    cambiar_pagina("resultados")
-elif query_params.get("page") == ["pacientes"]:
-    cambiar_pagina("pacientes")
-elif query_params.get("page") == ["historia_paciente"]:
-    paciente = query_params.get("paciente")[0]
-    historia_paciente(paciente)
+if "page" in query_params:
+    if query_params["page"][0] == "registrar_paciente":
+        cambiar_pagina("registrar_paciente")
+    elif query_params["page"][0] == "diagnostico_lumbar":
+        cambiar_pagina("diagnostico_lumbar")
+    elif query_params["page"][0] == "resultados":
+        cambiar_pagina("resultados")
+    elif query_params["page"][0] == "pacientes":
+        cambiar_pagina("pacientes")
+    elif query_params["page"][0] == "historia_paciente" and "paciente" in query_params:
+        st.session_state["paciente"] = query_params["paciente"][0]
+        cambiar_pagina("historia_paciente")
