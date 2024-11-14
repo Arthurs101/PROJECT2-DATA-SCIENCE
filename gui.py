@@ -56,6 +56,8 @@ st.markdown("""
             height: 36px;
             cursor: pointer;
         }
+        
+            
         .centered-title {
             text-align: center;
             font-size: 24px;
@@ -66,6 +68,23 @@ st.markdown("""
             display: block;
             margin: 0 auto 20px auto;
             width: 150px;
+        }
+        .centered-title {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .card {
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+            transition: 0.3s;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .card:hover {
+            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+        }
+        .container {
+            padding: 2px 16px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -94,7 +113,7 @@ def diagnostico_lumbar():
     if nombre_paciente and imagen_diagnostico:
         ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
         if os.path.exists(ruta_paciente):
-            fecha_actual = datetime.now().strftime("%d-%m-%y")
+            fecha_actual = datetime.now().strftime("%d-%m-%y %H:%M:%S")
             ruta_imagen = f"{ruta_paciente}/{fecha_actual}.jpg"
             with open(ruta_imagen, "wb") as f:
                 f.write(imagen_diagnostico.getbuffer())
@@ -109,6 +128,9 @@ def diagnostico_lumbar():
     # Botón para navegar a la página de resultados
     if st.button("Enviar a diagnóstico"):
         cambiar_pagina("resultados")
+
+#    if st.button("ver pacientes"):
+#        cambiar_pagina("pacientes")
         
 
 # Página de Resultados
@@ -120,6 +142,26 @@ def pagina_resultados():
     else:
         st.warning("No hay una imagen cargada recientemente. Por favor, suba una imagen en la página de diagnóstico.")
 
+def pagina_pacientes():
+    st.markdown("<div class='centered-title'>Pacientes Registrados</div>", unsafe_allow_html=True)
+    pacientes = os.listdir("./Images")
+    
+    if pacientes:
+        for paciente in pacientes:
+            st.markdown(f"""
+            <div class="card">
+                <a href="/?page=historia_paciente&paciente={paciente}" target="_self">
+                    <img src="https://img.icons8.com/ios-filled/50/000000/user.png" alt="Imagen de perfil">
+                    <div class="container">
+                        <h4><b>{paciente}</b></h4>
+                    </div>
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.warning("No hay pacientes registrados.")
+
+
 # Navegación entre páginas
 if st.session_state.page == "registrar_paciente":
     registrar_paciente()
@@ -127,21 +169,15 @@ elif st.session_state.page == "diagnostico_lumbar":
     diagnostico_lumbar()
 elif st.session_state.page == "resultados":
     pagina_resultados()
-
-def Pacientes():
-    st.markdown("<div class='centered-title'>Pacientes Registrados</div>", unsafe_allow_html=True)
-    pacientes = os.listdir("./Images")
-    if pacientes:
-        st.write(pacientes)
-    else:
-        st.warning("No hay pacientes registrados.")
-
+elif st.session_state.page == "pacientes":
+    pagina_pacientes()
+    
 # Navbar
 st.markdown("""
     <div class="navbar">
-        <a href="/?page=registrar_paciente" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/paper.png" title="Registro de Paciente"></a>
-        <a href="/?page=diagnostico_lumbar" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" title="Diagnóstico Lumbar"></a>
-        <a href="/?page=Pacientes" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" title="Pacientes"></a>
+        <a href="?page=registrar_paciente" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/paper.png" title="Registro de Paciente"></a>
+        <a href="?page=diagnostico_lumbar" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" title="Diagnóstico Lumbar"></a>
+        <a href="?page=pacientes" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" title="Pacientes"></a>
     </div>
 """, unsafe_allow_html=True)
 
@@ -153,5 +189,5 @@ elif query_params.get("page") == ["diagnostico_lumbar"]:
     cambiar_pagina("diagnostico_lumbar")
 elif query_params.get("page") == ["resultados"]:
     cambiar_pagina("resultados")
-elif query_params.get("page") == ["Pacientes"]:
-    cambiar_pagina("Pacientes")
+elif query_params.get("page") == ["pacientes"]:
+    cambiar_pagina("pacientes")
