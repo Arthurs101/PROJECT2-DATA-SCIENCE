@@ -129,8 +129,8 @@ def diagnostico_lumbar():
     if st.button("Enviar a diagnóstico"):
         cambiar_pagina("resultados")
 
-#    if st.button("ver pacientes"):
-#        cambiar_pagina("pacientes")
+    if st.button("ver pacientes"):
+        cambiar_pagina("pacientes")
         
 
 # Página de Resultados
@@ -150,7 +150,7 @@ def pagina_pacientes():
         for paciente in pacientes:
             st.markdown(f"""
             <div class="card">
-                <a href="/?page=historia_paciente&paciente={paciente}" target="_self">
+                <a href="?page=historia_paciente&paciente={paciente}" target="_self">
                     <img src="https://img.icons8.com/ios-filled/50/000000/user.png" alt="Imagen de perfil">
                     <div class="container">
                         <h4><b>{paciente}</b></h4>
@@ -161,6 +161,22 @@ def pagina_pacientes():
     else:
         st.warning("No hay pacientes registrados.")
 
+def historia_paciente(paciente):
+    st.markdown(f"<div class='centered-title'>Historia de {paciente}</div>", unsafe_allow_html=True)
+    imagenes = os.listdir(f"./Images/{paciente}")
+    
+    if imagenes:
+        for imagen in imagenes:
+            st.markdown(f"""
+            <div class="image-card">
+                <img src="./Images/{paciente}/{imagen}" alt="{imagen}" style="width:50px;height:50px;">
+                <div class="container">
+                    <p>{imagen}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.warning("No hay imágenes para este paciente.")
 
 # Navegación entre páginas
 if st.session_state.page == "registrar_paciente":
@@ -171,7 +187,7 @@ elif st.session_state.page == "resultados":
     pagina_resultados()
 elif st.session_state.page == "pacientes":
     pagina_pacientes()
-    
+
 # Navbar
 st.markdown("""
     <div class="navbar">
@@ -191,3 +207,6 @@ elif query_params.get("page") == ["resultados"]:
     cambiar_pagina("resultados")
 elif query_params.get("page") == ["pacientes"]:
     cambiar_pagina("pacientes")
+elif query_params.get("page") == ["historia_paciente"]:
+    paciente = query_params.get("paciente")[0]
+    historia_paciente(paciente)
