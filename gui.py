@@ -1,4 +1,6 @@
 import streamlit as st
+from datetime import datetime
+import os
 
 # Configuración de la sesión para la navegación
 if "page" not in st.session_state:
@@ -68,49 +70,88 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Página de registro de paciente
-if st.session_state.page == "registro_paciente":
+# Página para registrar al paciente
+def registrar_paciente():
     st.markdown("<div class='centered-title'>Agregar paciente</div>", unsafe_allow_html=True)
     st.markdown("<img src='https://images.vexels.com/media/users/3/200356/isolated/preview/127d177d9fda573481055d66bc602942-simbolo-del-caduceo-monocromo.png' class='centered-image'>", unsafe_allow_html=True)
-    
-    # Formulario de registro
-    nombre = st.text_input("Nombre:", "", key="nombre", help="Ingrese el nombre del paciente", placeholder="Nombre del paciente")
-    edad = st.text_input("Edad:", "", key="edad", help="Ingrese la edad del paciente", placeholder="Edad del paciente")
-    imagen = st.file_uploader("Seleccionar imagen", type=["jpg", "png"], key="imagen")
+    nombre_paciente = st.text_input("Nombre del paciente:", "", placeholder="Nombre del paciente", help="Ingrese el nombre del paciente")
 
-    # Botón de agregar paciente
-    if st.button("Agregar paciente", key="agregar_paciente"):
-        st.success(f"Paciente {nombre} agregado con éxito.")
+    if nombre_paciente:
+        ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
+        if os.path.exists(ruta_paciente):
+            st.warning("El paciente ya está registrado.")
+        else:
+            os.makedirs(ruta_paciente, exist_ok=True)
+            st.success(f"Paciente '{nombre_paciente}' registrado exitosamente.")
+            st.session_state["nombre_paciente"] = nombre_paciente
 
-# Página de diagnóstico lumbar (principal)
-elif st.session_state.page == "diagnostico_lumbar":
+# Página para subir imagen de diagnóstico
+def diagnostico_lumbar():
     st.markdown("<div class='centered-title'>Registro diagnóstico lumbar</div>", unsafe_allow_html=True)
-    st.markdown("<img src='https://images.vexels.com/media/users/3/200356/isolated/preview/127d177d9fda573481055d66bc602942-simbolo-del-caduceo-monocromo.png' class='centered-image'>", unsafe_allow_html=True)
+    nombre_paciente = st.text_input("Nombre del paciente:", "", placeholder="Nombre del paciente")
+    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["jpg", "png"])
 
-    # Formulario de diagnóstico
-    num_paciente = st.text_input("No. Paciente:", "", key="num_paciente", help="Ingrese el número del paciente", placeholder="Número de paciente")
-    nombre = st.text_input("Nombre:", "", key="nombre_diagnostico", help="Ingrese el nombre del paciente", placeholder="Nombre del paciente")
-    imagen_diagnostico = st.file_uploader("Seleccionar imagen del diagnóstico", type=["jpg", "png"], key="imagen_diagnostico")
+    if nombre_paciente and imagen_diagnostico:
+        ruta_paciente = f"./Images/{nombre_paciente.replace(' ', '_')}"
+        if os.path.exists(ruta_paciente):
+            fecha_actual = datetime.now().strftime("%d-%m-%y")
+            ruta_imagen = f"{ruta_paciente}/{fecha_actual}.jpg"
+            with open(ruta_imagen, "wb") as f:
+                f.write(imagen_diagnostico.getbuffer())
+            st.success(f"Imagen guardada en {ruta_imagen}")
+            st.session_state["ultima_imagen"] = ruta_imagen
+        else:
+            st.error("Ha ingresado incorrectamente el nombre del paciente. Por favor, revise el nombre o regístrelo primero.")
 
-    # Botones en la página de diagnóstico
-    if st.button("Enviar a diagnóstico", key="enviar_diagnostico"):
-        st.success(f"Diagnóstico para el paciente {nombre} enviado con éxito.")
-    
-    if st.button("Ingresar Paciente", key="ingresar_paciente"):
-        cambiar_pagina("registro_paciente")  # Cambiar a la página de registro de paciente
+    # Botón para navegar a ingreso de paciente
+    if st.button("Ingresar un paciente"):
+        cambiar_pagina("registrar_paciente")
+    # Botón para navegar a la página de resultados
+    if st.button("Enviar a diagnóstico"):
+        cambiar_pagina("resultados")
+        
 
-# Navbar con funcionalidad de cambio de página
+# Página de Resultados
+def pagina_resultados():
+    st.markdown("<div class='centered-title'>Resultados del Diagnóstico</div>", unsafe_allow_html=True)
+    if "ultima_imagen" in st.session_state:
+        ultima_imagen = st.session_state["ultima_imagen"]
+        st.image(ultima_imagen, caption="Último diagnóstico cargado", use_column_width=True)
+    else:
+        st.warning("No hay una imagen cargada recientemente. Por favor, suba una imagen en la página de diagnóstico.")
+
+# Navegación entre páginas
+if st.session_state.page == "registrar_paciente":
+    registrar_paciente()
+elif st.session_state.page == "diagnostico_lumbar":
+    diagnostico_lumbar()
+elif st.session_state.page == "resultados":
+    pagina_resultados()
+
+def Pacientes():
+    st.markdown("<div class='centered-title'>Pacientes Registrados</div>", unsafe_allow_html=True)
+    pacientes = os.listdir("./Images")
+    if pacientes:
+        st.write(pacientes)
+    else:
+        st.warning("No hay pacientes registrados.")
+
+# Navbar
 st.markdown("""
     <div class="navbar">
-        <a href="/?page=registro_paciente"><img src="https://img.icons8.com/ios-filled/50/000000/paper.png" title="Registro de Paciente"></a>
-        <a href="/?page=diagnostico_lumbar"><img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" title="Diagnóstico Lumbar"></a>
-        <img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" title="Otros">
+        <a href="/?page=registrar_paciente" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/paper.png" title="Registro de Paciente"></a>
+        <a href="/?page=diagnostico_lumbar" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/treatment-plan.png" title="Diagnóstico Lumbar"></a>
+        <a href="/?page=Pacientes" target="_self"><img src="https://img.icons8.com/ios-filled/50/000000/doctor-male.png" title="Pacientes"></a>
     </div>
 """, unsafe_allow_html=True)
 
-# Redirección en función de la página usando st.query_params
+# Manejo de parámetros en URL para navegación
 query_params = st.query_params
-if query_params.get("page") == "registro_paciente":
-    cambiar_pagina("registro_paciente")
-elif query_params.get("page") == "diagnostico_lumbar":
+if query_params.get("page") == ["registrar_paciente"]:
+    cambiar_pagina("registrar_paciente")
+elif query_params.get("page") == ["diagnostico_lumbar"]:
     cambiar_pagina("diagnostico_lumbar")
+elif query_params.get("page") == ["resultados"]:
+    cambiar_pagina("resultados")
+elif query_params.get("page") == ["Pacientes"]:
+    cambiar_pagina("Pacientes")
